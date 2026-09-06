@@ -1,0 +1,50 @@
+{
+  "name": "reachinbox-scheduler-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Email job scheduler service (BullMQ + Redis + Postgres + Ethereal + Elasticsearch)",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "worker:dev": "tsx watch src/queue/worker.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "start:worker": "node dist/queue/worker.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "seed:es": "tsx src/scripts/ensureEsIndex.ts",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@bull-board/api": "^9.8.0",
+    "@bull-board/express": "^9.8.0",
+    "@elastic/elasticsearch": "^8.14.0",
+    "@prisma/client": "^5.16.1",
+    "axios": "^1.7.2",
+    "bullmq": "^5.7.15",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "csv-parse": "^5.5.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "google-auth-library": "^9.11.0",
+    "ioredis": "^5.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.14",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.7",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^20.14.9",
+    "@types/nodemailer": "^6.4.15",
+    "prisma": "^5.16.1",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3"
+  }
+}

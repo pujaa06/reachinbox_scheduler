@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EmailStatus {
+  PENDING
+  QUEUED
+  SENDING
+  SENT
+  FAILED
+  DELAYED_RATE_LIMIT
+}
+
+model User {
+  id          String   @id @default(uuid())
+  googleId    String   @unique
+  email       String   @unique
+  name        String
+  avatarUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  senders           Sender[]
+  emails            Email[]
+  slackIntegration  SlackIntegration?
+}
+
+// A "sender" represents one of the multiple Ethereal SMTP identities
+// used to send mail. Rate limits are tracked per sender.
+model Sender {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  smtpHost      String
+  smtpPort      Int
+  smtpUser      String
+  smtpPass      String
+  maxPerHour    Int      @default(100)
+  createdAt     DateTime @default(now())
+
+  emails Email[]
+
+  @@index([userId])
+}
+
+model Batch {
+  id              String   @id @default(uuid())
+  userId          String
+  subject         String
+  body            String   @db.Text
+  startTime       DateTime
+  delayMs         Int
+  hourlyLimit     Int
+  totalRecipients Int
+  createdAt       DateTime @default(now())
+
+  emails Email[]
+}
+
+// One row per recipient / send. jobId is the BullMQ job id used for
+// idempotency - a job is never (re)created if a row already has one.
+model Email {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  batchId       String?
+  batch         Batch?      @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  senderId      String?
+  sender        Sender?     @relation(fields: [senderId], references: [id])
+
+  recipient     String
+  subject       String
+  body          String      @db.Text
+
+  status        EmailStatus @default(PENDING)
+  scheduledFor  DateTime
+  sentAt        DateTime?
+  failReason    String?
+
+  jobId         String?     @unique
+  attempts      Int         @default(0)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([userId, status])
+  @@index([scheduledFor])
+}
+
+model SlackIntegration {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId        String
+  teamName      String
+  accessToken   String
+  webhookUrl    String
+  channel       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Persists the BullMQ repeat/scheduler bookkeeping we need to survive
+// restarts cleanly and to know which hour-window counters are "live".
+model RateLimitWindow {
+  id          String   @id @default(uuid())
+  senderId    String?
+  scope       String   // "global" or a senderId
+  windowStart DateTime
+  count       Int      @default(0)
+
+  @@unique([scope, windowStart])
+}
